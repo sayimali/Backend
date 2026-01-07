@@ -6,4 +6,4 @@ services:
     container_name: backend
     restart: always
     ports:
-      - "3006:3006"
+      - "3006:5000"
