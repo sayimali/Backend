@@ -25,8 +25,8 @@ connectdb();
 
 // ✅ Proper CORS configuration
 const allowedOrigins = [
-  "http://localhost:3005",
-  "https://accounts.muxcloudweb.store"
+  "http://localhost:3000",
+  "https://frontend.muxcloudweb.store"
 ];
 
 app.use(cors({

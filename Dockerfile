@@ -11,4 +11,4 @@ COPY . .
 EXPOSE 3006
 
 # Start server correctly
-CMD ["npm", "server"]
+CMD ["node", "server"]
