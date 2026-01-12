@@ -1,0 +1,41 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Deploy to server as sayim user
+        run: |
+          ssh -o StrictHostKeyChecking=no sayim@13.126.72.177 << 'EOF'
+
+            set -e
+
+            echo "Deploying frontend as sayim..."
+            cd /home/sayim/apps/frontend
+            git pull origin main
+            docker compose build
+            docker compose up -d
+
+            echo "Deploying backend as sayim..."
+            cd /home/sayim/apps/backend
+            git pull origin main
+            docker compose build
+            docker compose up -d
+
+            echo "Deployment completed successfully"
+
+          EOF
