@@ -20,7 +20,7 @@ jobs:
 
       - name: Deploy to server as sayim user
         run: |
-          ssh -o StrictHostKeyChecking=no sayim@13.126.72.177 << 'EOF'
+          ssh -o StrictHostKeyChecking=no sayim@172.31.40.138 << 'EOF'
 
             set -e
 
