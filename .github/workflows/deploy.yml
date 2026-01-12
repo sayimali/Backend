@@ -1,41 +1,40 @@
-name: Auto Deploy
+name: Auto Deploy to EC2
 
 on:
   push:
     branches:
-      - main
+      - main  # Trigger on pushes to main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repo
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.8.1
+      # Step 2: Deploy via SSH
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.8
         with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
-      - name: Deploy to server as sayim user
-        run: |
-          ssh -o StrictHostKeyChecking=no sayim@13.126.72.177 << 'EOF'
-
-            set -e
-
-            echo "Deploying frontend as sayim..."
+          host: 13.126.72.177        # EC2 public IP
+          username: sayim             # EC2 user
+          key: ${{ secrets.SERVER_SSH_KEY }}    # Private key from GitHub Secrets
+          script: |
+            echo "==== Deploying Frontend ===="
             cd /home/sayim/apps/frontend
+            git reset --hard
             git pull origin main
-            docker compose build
-            docker compose up -d
+            npm install
+            npm run build
+            pm2 restart frontend || pm2 start npm --name "frontend" -- run start
 
-            echo "Deploying backend as sayim..."
+            echo "==== Deploying Backend ===="
             cd /home/sayim/apps/backend
+            git reset --hard
             git pull origin main
-            docker compose build
-            docker compose up -d
+            npm install
+            pm2 restart backend || pm2 start npm --name "backend" -- run start
 
-            echo "Deployment completed successfully"
-
-          EOF
+            echo "==== Deployment Completed Successfully ===="
