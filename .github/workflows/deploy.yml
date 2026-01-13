@@ -1,12 +1,22 @@
-name: Test SSH
+name: Deploy to EC2
 
-on: [push]
+# Trigger deployment on push to main branch
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Test SSH Connection
+      # 1️⃣ Checkout repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Test SSH connection (optional, good for debugging)
+      - name: Test SSH connection
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: 13.126.72.177
@@ -15,3 +25,60 @@ jobs:
           port: 22
           script: |
             echo "SSH connection successful"
+
+      # 3️⃣ Deploy Frontend (PM2 Node App)
+      - name: Deploy Frontend
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: 13.126.72.177
+          username: sayim
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 15m
+          script: |
+            echo "==== Deploying Frontend ===="
+            cd /home/sayim/apps/frontend || exit 1
+
+            # Ensure git repo exists
+            if [ ! -d ".git" ]; then
+              git init
+              git remote add origin https://github.com/sayimali/Frontend.git
+            fi
+
+            git fetch origin
+            git reset --hard origin/main
+            git pull origin main
+
+            # Install dependencies and build
+            npm install
+            npm run build
+
+            # Restart PM2 process
+            pm2 restart frontend || pm2 start npm --name "frontend" -- run start
+
+            echo "==== Frontend Deployment Completed ===="
+
+      # 4️⃣ Deploy Backend (Docker Compose)
+      - name: Deploy Backend with Docker Compose
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: 13.126.72.177
+          username: sayim
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          timeout: 120s
+          command_timeout: 20m
+          script: |
+            echo "==== Deploying Backend ===="
+            cd /home/sayim/apps/backend || exit 1
+
+            git fetch origin
+            git reset --hard origin/main
+            git pull origin main
+
+            # Rebuild and restart Docker Compose
+            docker compose down
+            docker compose up -d --build
+
+            echo "==== Backend Deployment Completed ===="
