@@ -3,24 +3,25 @@ name: Auto Deploy to EC2
 on:
   push:
     branches:
-      - main  # Trigger on pushes to main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Deploy via SSH
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.8
         with:
-          host: 13.126.72.177        # EC2 public IP
-          username: sayim             # EC2 user
-          key: ${{ secrets.SERVER_SSH_KEY }}    # Private key from GitHub Secrets
+          host: 13.126.72.177
+          username: ubuntu
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 15m
           script: |
             echo "==== Deploying Frontend ===="
             cd /home/sayim/apps/frontend
