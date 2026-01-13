@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy Backend to EC2
 
 on:
   push:
@@ -10,20 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Deploy Backend (Docker)
-        uses: appleboy/ssh-action@v0.1.8
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.0
         with:
-          host: 13.126.72.177
-          username: sayim
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          timeout: 120s
-          command_timeout: 15m
           script: |
             set -e
             cd /home/sayim/apps/backend
             git fetch origin
             git reset --hard origin/main
+            docker-compose down
             docker-compose up -d --build
