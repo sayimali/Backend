@@ -1,6 +1,5 @@
 name: Deploy to EC2
 
-# Trigger deployment on push to main branch
 on:
   push:
     branches:
@@ -11,23 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Test SSH connection (optional, good for debugging)
-      - name: Test SSH connection
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: 13.126.72.177
-          username: sayim
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          script: |
-            echo "SSH connection successful"
-
-      # 3️⃣ Deploy Frontend (PM2 Node App)
       - name: Deploy Frontend
         uses: appleboy/ssh-action@v0.1.8
         with:
@@ -38,28 +23,14 @@ jobs:
           timeout: 120s
           command_timeout: 20m
           script: |
-            echo "==== Deploying Frontend ===="
-            cd /home/sayim/apps/frontend || exit 1
-
-            # Ensure git repo exists
-            if [ ! -d ".git" ]; then
-              git init
-              git remote add origin https://github.com/sayimali/frontend-nextjs.git
-            fi
-
+            set -e
+            cd /home/sayim/apps/frontend
             git fetch origin
             git reset --hard origin/main
-            git pull origin main
-
-            # Install dependencies and build
             npm install
             npm run build
+            pm2 reload frontend || pm2 start npm --name frontend -- run start
 
-            # Restart PM2 process
-            pm2 restart frontend || pm2 start npm --name "frontend" -- run start
-            echo "==== Frontend Deployment Completed ===="
-
-      # 4️⃣ Deploy Backend (Docker Compose)
       - name: Deploy Backend
         uses: appleboy/ssh-action@v0.1.8
         with:
@@ -70,14 +41,9 @@ jobs:
           timeout: 180s
           command_timeout: 30m
           script: |
-            echo "==== Deploying Backend ===="
-            cd /home/sayim/apps/backend || exit 1
-
+            set -e
+            cd /home/sayim/apps/backend
             git fetch origin
             git reset --hard origin/main
-            git pull origin main
-
-            # Rebuild and restart Docker Compose
-            docker compose down
+            docker compose down || true
             docker compose up -d --build
-            echo "==== Backend Deployment Completed ===="
