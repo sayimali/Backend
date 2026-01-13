@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy Frontend
+      - name: Deploy Backend (Docker)
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: 13.126.72.177
@@ -21,29 +20,10 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           timeout: 120s
-          command_timeout: 20m
-          script: |
-            set -e
-            cd /home/sayim/apps/frontend
-            git fetch origin
-            git reset --hard origin/main
-            npm install
-            npm run build
-            pm2 reload frontend || pm2 start npm --name frontend -- run start
-
-      - name: Deploy Backend
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: 13.126.72.177
-          username: sayim
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          timeout: 180s
-          command_timeout: 30m
+          command_timeout: 15m
           script: |
             set -e
             cd /home/sayim/apps/backend
             git fetch origin
             git reset --hard origin/main
-            docker compose down || true
             docker compose up -d --build
