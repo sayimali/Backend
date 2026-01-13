@@ -1,21 +1,12 @@
-name: Deploy to EC
+name: Test SSH
 
-on:
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 2️⃣ Test SSH connection (optional)
-      - name: Test SSH
+      - name: Test SSH Connection
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: 13.126.72.177
@@ -24,43 +15,3 @@ jobs:
           port: 22
           script: |
             echo "SSH connection successful"
-
-      # 3️⃣ Deploy Frontend
-      - name: Deploy Frontend
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: 13.126.72.177
-          username: sayim
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 15m
-          script: |
-            echo "==== Deploying Frontend ===="
-            cd /home/sayim/apps/frontend || exit 1
-            git fetch origin
-            git reset --hard origin/main
-            git pull origin main
-            npm install
-            npm run build
-            pm2 restart frontend || pm2 start npm --name "frontend" -- run start
-
-      # 4️⃣ Deploy Backend (Docker Compose)
-      - name: Deploy Backend with Docker Compose
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: 13.126.72.177
-          username: sayim
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          timeout: 120s
-          command_timeout: 20m
-          script: |
-            echo "==== Deploying Backend ===="
-            cd /home/sayim/apps/backend || exit 1
-            git fetch origin
-            git reset --hard origin/main
-            git pull origin main
-            docker compose down
-            docker compose up -d --build
-            echo "==== Backend Deployment Completed ===="
