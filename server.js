@@ -47,7 +47,7 @@ app.use(cookieParser());
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('The server is running with CI/CD successfull on LINUX SERVER all is GOOD hassan mare jan');
+  res.send('The server is running with CI/CD successfull on LINUX SERVER all is GOOD');
 });
 
 // Use routes
