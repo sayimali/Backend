@@ -22,8 +22,26 @@ jobs:
           port: 22
           script: |
             set -e
+
             cd /home/sayim/apps/backend
             git fetch origin
             git reset --hard origin/main
-            docker-compose down
-            docker-compose up -d --build
+
+            ACTIVE_PORT=$(grep -o "300[78]" /etc/nginx/conf.d/backend.conf)
+
+            if [ "$ACTIVE_PORT" = "3007" ]; then
+              NEW_SERVICE=backend_green
+              NEW_PORT=3008
+            else
+              NEW_SERVICE=backend_blue
+              NEW_PORT=3007
+            fi
+
+            docker-compose up -d --build $NEW_SERVICE
+
+            sleep 10
+
+            curl -f http://localhost:$NEW_PORT/health
+
+            sed -i "s/300[78]/$NEW_PORT/" /etc/nginx/conf.d/backend.conf
+            nginx -s reload
