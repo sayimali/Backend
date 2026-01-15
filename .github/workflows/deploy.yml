@@ -39,10 +39,10 @@ jobs:
 
           echo "Deploying $NEW_SERVICE on port $NEW_PORT"
 
-          # Build and start container
-          docker-compose up -d --build --remove-orphans $NEW_SERVICE
+          # Build and start container with BuildKit & remove orphan containers
+          DOCKER_BUILDKIT=1 docker-compose up -d --build --remove-orphans $NEW_SERVICE
 
-          # Wait for container to start and pass health check (max 60s)
+          # Wait for container to start & check health (max 60s)
           for i in {1..12}; do
             if curl -fs http://localhost:$NEW_PORT/health; then
               echo "Health check passed"
@@ -64,8 +64,6 @@ jobs:
 
           # Switch Nginx to new port
           sudo sed -i "s/300[78]/$NEW_PORT/" /etc/nginx/sites-available/backend
-
-          # Reload Nginx
           sudo nginx -t
           sudo systemctl reload nginx
 
