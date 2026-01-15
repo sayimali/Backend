@@ -1,4 +1,4 @@
-name: Deploy Backend to EC2
+name: Backend Blue-Green Deployment
 
 on:
   push:
@@ -8,40 +8,51 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          script: |
-            set -e
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        script: |
+          set -e
 
-            cd /home/sayim/apps/backend
-            git fetch origin
-            git reset --hard origin/main
+          cd /home/sayim/apps/backend
+          git fetch origin
+          git reset --hard origin/main
 
-            ACTIVE_PORT=$(grep -o "300[78]" /etc/nginx/conf.d/backend.conf)
+          # Detect current active port
+          ACTIVE_PORT=$(grep -o "300[78]" /etc/nginx/sites-available/backend)
 
-            if [ "$ACTIVE_PORT" = "3007" ]; then
-              NEW_SERVICE=backend_green
-              NEW_PORT=3008
-            else
-              NEW_SERVICE=backend_blue
-              NEW_PORT=3007
-            fi
+          if [ "$ACTIVE_PORT" = "3007" ]; then
+            NEW_SERVICE=backend_green
+            NEW_PORT=3008
+          else
+            NEW_SERVICE=backend_blue
+            NEW_PORT=3007
+          fi
 
-            docker-compose up -d --build $NEW_SERVICE
+          echo "Deploying $NEW_SERVICE on port $NEW_PORT"
 
-            sleep 10
+          # Build and start container
+          docker-compose up -d --build $NEW_SERVICE
 
-            curl -f http://localhost:$NEW_PORT/health
+          # Wait for container to start
+          sleep 10
 
-            sed -i "s/300[78]/$NEW_PORT/" /etc/nginx/conf.d/backend.conf
-            nginx -s reload
+          # Health check
+          curl -f http://localhost:$NEW_PORT/health || (echo "Health check failed" && exit 1)
+
+          # Switch Nginx to new port
+          sudo sed -i "s/300[78]/$NEW_PORT/" /etc/nginx/sites-available/backend
+
+          # Reload Nginx
+          sudo nginx -t
+          sudo systemctl reload nginx
+
+          echo "Deployment of $NEW_SERVICE completed successfully!"
