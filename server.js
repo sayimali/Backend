@@ -50,6 +50,10 @@ app.get('/', (req, res) => {
   res.send('The server is running with CI/CD');
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/income', incomeRoute);
