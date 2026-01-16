@@ -47,7 +47,7 @@ app.use(cookieParser());
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('The server is running with CI/CD');
+  res.send('The server is running with CI/CD without down');
 });
 
 app.get('/health', (req, res) => {
@@ -68,7 +68,8 @@ app.use('/api/accountexpanse', accountexpansetitleNumber);
 app.use('/api/accountincome', accounttitleincome);
 
 // Start the server
-const PORT = process.env.PORT || 3007;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const PORT = process.env.PORT || 3006;
+app.listen(3006, "0.0.0.0", () => {
+  console.log("Server running on port 3006");
 });
+
