@@ -47,7 +47,7 @@ app.use(cookieParser());
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('The server is running with CI/CD without downer sucess');
+  res.send('The server is running with CI/CD without down container concept');
 });
 
 app.get("/health", (req, res) => {
