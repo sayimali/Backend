@@ -1,16 +1,16 @@
-version: "3.9"
+version: "3.8"
 
 services:
   backend_blue:
     build: .
     container_name: backend_blue
     ports:
-      - "3007:3006"
+      - "3006:3006"
     restart: always
 
   backend_green:
     build: .
     container_name: backend_green
     ports:
-      - "3008:3006"
+      - "3007:3006"
     restart: always

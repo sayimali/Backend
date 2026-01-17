@@ -1,39 +1,80 @@
-name: Deploy Backend Zero Downtime
+name: Deploy Backend (Blue-Green)
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.0
+      # 2️⃣ Setup SSH
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          host: ${{ secrets.SERVER_IP }}
-          username: sayim
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            set -e
-            cd ~/apps/backend
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-            echo "▶ Building GREEN"
-            docker-compose build backend_green
-            docker-compose up -d backend_green
+      # 3️⃣ Copy code to EC2
+      - name: Sync Backend code to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no sayim@13.126.72.177 "mkdir -p ~/apps/backend_tmp"
+          rsync -avz --delete --exclude node_modules ./ sayim@13.126.72.177:~/apps/backend_tmp/
 
-            echo "▶ Health check"
-            sleep 5
-            curl -f http://localhost:3008/health
+      # 4️⃣ Build GREEN container on server
+      - name: Deploy GREEN container
+        run: |
+          ssh sayim@13.126.72.177 "
+            cd ~/apps/backend_tmp &&
+            docker-compose -f docker-compose.yml up -d --build backend_green &&
+            echo 'GREEN built'
+          "
 
-            echo "▶ Switching NGINX to GREEN"
-            sudo ln -sf /etc/nginx/conf.d/backend_green.conf /etc/nginx/conf.d/backend.conf
-            sudo nginx -t
+      # 5️⃣ Health check GREEN
+      - name: Health check GREEN
+        run: |
+          ssh sayim@13.126.72.177 "
+            GREEN_HEALTH=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3007/health);
+            if [ \$GREEN_HEALTH -ne 200 ]; then
+              echo 'GREEN failed health check';
+              docker logs backend_green;
+              exit 1;
+            fi
+            echo 'GREEN is healthy'
+          "
+
+      # 6️⃣ Switch Nginx to GREEN
+      - name: Switch Nginx to GREEN
+        run: |
+          ssh sayim@13.126.72.177 "
+            sudo sed -i 's/server 127.0.0.1:3006;/server 127.0.0.1:3007;/g' /etc/nginx/sites-available/backend.conf &&
+            sudo nginx -t &&
             sudo systemctl reload nginx
+          "
 
-            echo "▶ Removing BLUE"
-            docker stop backend_blue || true
-            docker rm backend_blue || true
+      # 7️⃣ Stop BLUE
+      - name: Stop old BLUE container
+        run: |
+          ssh sayim@13.126.72.177 "
+            docker stop backend_blue || true &&
+            docker rm backend_blue || true &&
+            echo 'BLUE stopped'
+          "
+
+      # 8️⃣ Rename GREEN → BLUE for next deploy
+      - name: Promote GREEN to BLUE
+        run: |
+          ssh sayim@13.126.72.177 "
+            docker rename backend_green backend_blue &&
+            echo 'GREEN promoted to BLUE'
+          "
+
+      # 9️⃣ Clean temporary directory
+      - name: Cleanup
+        run: |
+          ssh sayim@13.126.72.177 "rm -rf ~/apps/backend_tmp"

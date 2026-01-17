@@ -47,12 +47,13 @@ app.use(cookieParser());
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('The server is running with CI/CD without down');
+  res.send('The server is running with CI/CD without down container sucessfully');
 });
 
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
 });
+
 
 // Use routes
 app.use('/api/auth', authRoutes);
